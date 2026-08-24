@@ -1,0 +1,10 @@
+{
+  "name": "Morning Mission",
+  "short_name": "Mission",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff8e9",
+  "theme_color": "#18345f",
+  "orientation": "landscape",
+  "icons": []
+}

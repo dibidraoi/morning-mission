@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Morning Mission</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#18345f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Morning Mission">
+
+<style>
+:root{--navy:#18345f;--blue:#3988df;--green:#4caf57;--cream:#fff8e9;--ink:#173052}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#dfeafb;color:var(--ink);overflow:hidden}
+button{font:inherit;font-weight:850;border:0;cursor:pointer;touch-action:none}
+.screen{display:none;width:100vw;height:100dvh;min-height:560px;position:relative;overflow:hidden}
+.screen.active{display:flex}.cardScreen{align-items:center;justify-content:center;padding:20px;background:linear-gradient(#fffaf0,#f1f6ff)}
+.card{width:min(430px,94vw);background:#fff;border-radius:30px;padding:25px;box-shadow:0 14px 40px #496a9b25;text-align:center}
+h1{font-size:clamp(29px,7vw,45px);margin:5px 0 8px}.sub{font-size:18px;font-weight:750;color:#62718a}
+.taskIcon{font-size:70px;margin:12px}.task{font-size:31px;font-weight:900}.reward{margin:20px auto;padding:14px;background:#f5f7fb;border-radius:18px;font-size:18px}
+.primary{width:100%;padding:16px;border-radius:18px;background:var(--green);color:#fff;font-size:23px;box-shadow:0 5px 0 #318a3b}.primary.blue{background:var(--blue);box-shadow:0 5px 0 #2468b4}.primary.purple{background:#8156c8;box-shadow:0 5px 0 #60409a}.primary:active{transform:translateY(3px);box-shadow:none}
+.progress{display:flex;justify-content:center;gap:9px;margin:13px 0 18px}.dot{width:13px;height:13px;border-radius:50%;background:#d6dae1}.dot.done{background:#52aa62}.dot.current{background:#3988df}
+.bigReward{font-size:92px;margin:12px}.unlock{font-size:29px;font-weight:950;color:#285fba;margin:8px 0 25px}
+#game{background:#7586c7}.hud{position:absolute;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;font-size:23px;pointer-events:none;text-shadow:0 2px 3px #0005}.timer{background:#162b4ccc;color:white;border-radius:14px;padding:7px 13px;font-size:21px;font-weight:900}.ammo{background:#162b4ccc;color:white;border-radius:14px;padding:7px 12px;font-size:17px;font-weight:900;text-shadow:none}.reloadSpin{animation:reloadSpin 1.5s ease-in-out}@keyframes reloadSpin{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(.82)}100%{transform:rotate(360deg) scale(1)}}
+#canvas{width:100%;height:100%;display:block;touch-action:none}.controls{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:14px;right:14px;display:flex;justify-content:space-between}.cluster{display:flex;gap:10px}.ctrl{width:70px;height:70px;border-radius:50%;font-size:34px;color:white;background:#377fdb;box-shadow:0 5px 0 #245fa8;border:3px solid #ffffff80}.ctrl.jump{background:#55a93f;box-shadow:0 5px 0 #347a29}.ctrl.shoot{background:#e95345;box-shadow:0 5px 0 #aa342d;font-size:29px}.ctrl.reload{background:#8156c8;box-shadow:0 5px 0 #60409a;font-size:25px}.ctrl:disabled{opacity:.45;cursor:not-allowed}.ctrl:active,.ctrl.pressed{transform:translateY(4px);box-shadow:none}
+.loadout{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:18px 0}.gear{background:#f1f4f9;border-radius:15px;padding:9px 12px;font-size:26px;min-width:55px}.gear.locked{filter:grayscale(1);opacity:.25}
+.boss{font-size:90px;margin:8px}.small{font-size:14px;color:#718097}.roundStat{font-size:23px;font-weight:800;margin:14px}
+</style>
+</head>
+<body>
+<section id="mission" class="screen cardScreen"><div class="card">
+ <div style="font-size:48px">☀️</div><h1>MORNING MISSION</h1>
+ <div id="count" class="sub"></div><div id="progress" class="progress"></div>
+ <div id="taskIcon" class="taskIcon"></div><div id="taskName" class="task"></div>
+ <div class="reward">Reward<br><b id="rewardText"></b></div>
+ <button class="primary" onclick="completeTask()">DONE</button>
+</div></section>
+
+<section id="reward" class="screen cardScreen"><div class="card">
+ <h1>NICE!</h1><div id="rewardIcon" class="bigReward"></div>
+ <div id="unlockText" class="unlock"></div>
+ <button class="primary blue" onclick="startGame(false)">PLAY ROUND</button>
+</div></section>
+
+<section id="round" class="screen cardScreen"><div class="card">
+ <div style="font-size:68px">⭐</div><h1>ROUND OVER</h1>
+ <div class="roundStat">Great job!</div><div id="hits" class="roundStat"></div>
+ <button class="primary blue" onclick="nextMission()">NEXT MISSION</button>
+</div></section>
+
+<section id="bossUnlock" class="screen cardScreen"><div class="card">
+ <div style="font-size:62px">⭐</div><h1>MORNING COMPLETE!</h1>
+ <div class="sub">Your full loadout is ready</div><div id="loadout" class="loadout"></div>
+ <div class="boss">🤖</div><div class="unlock" style="color:#7544b0">BOSS BATTLE UNLOCKED!</div>
+ <button class="primary purple" onclick="startGame(true)">PLAY BOSS BATTLE</button>
+</div></section>
+
+<section id="finish" class="screen cardScreen"><div class="card">
+ <div style="font-size:82px">🏆</div><h1>MISSION COMPLETE!</h1>
+ <div class="task" style="font-size:25px">Ready for the day.</div>
+ <div class="loadout" id="finishLoadout"></div>
+ <button class="primary blue" onclick="restart()">START AGAIN</button>
+</div></section>
+
+<section id="game" class="screen">
+ <canvas id="canvas"></canvas>
+ <div class="hud"><span id="playerHearts">❤️❤️❤️</span><span id="ammo" class="ammo">MAG 10/10 · 30 LEFT</span><span id="enemyHearts">❤️❤️❤️</span></div><div id="keyHint" style="position:absolute;top:58px;left:50%;transform:translateX(-50%);background:#162b4c99;color:white;padding:5px 10px;border-radius:10px;font-size:12px;font-weight:800;pointer-events:none">Keyboard: ← → move · ↑ jump · X shoot · C reload</div>
+ <div class="controls"><div class="cluster"><button id="left" class="ctrl">←</button><button id="right" class="ctrl">→</button></div>
+ <div class="cluster"><button id="jump" class="ctrl jump">↑</button><button id="reload" class="ctrl reload" aria-label="Reload">↻</button><button id="shoot" class="ctrl shoot">🔫</button></div></div>
+</section>
+
+<script>
+const tasks=[
+ {name:"Get dressed",icon:"👕",reward:"🥋 Armour",gear:"🥋"},
+ {name:"Have breakfast",icon:"🥣",reward:"❤️ Extra health",gear:"❤️"},
+ {name:"Brush your teeth",icon:"🪥",reward:"🔫 Better blaster",gear:"🔫"},
+ {name:"Wash face & hair",icon:"🧴",reward:"⚡ Faster shooting",gear:"⚡"},
+ {name:"Schoolbag ready",icon:"🎒",reward:"🛡️ Shield",gear:"🛡️"},
+ {name:"Shoes on",icon:"👟",reward:"🚀 Jump boost",gear:"🚀"}
+];
+let taskIndex=0, completed=0, bossMode=false;
+const screens=[...document.querySelectorAll(".screen")];
+function show(id){screens.forEach(s=>s.classList.toggle("active",s.id===id))}
+function renderMission(){
+ document.getElementById("count").textContent=`${taskIndex+1} of ${tasks.length}`;
+ document.getElementById("taskIcon").textContent=tasks[taskIndex].icon;
+ document.getElementById("taskName").textContent=tasks[taskIndex].name;
+ document.getElementById("rewardText").textContent=tasks[taskIndex].reward;
+ document.getElementById("progress").innerHTML=tasks.map((_,i)=>`<span class="dot ${i<taskIndex?'done':i===taskIndex?'current':''}"></span>`).join("");
+ show("mission");
+}
+function completeTask(){
+ completed=Math.max(completed,taskIndex+1);
+ document.getElementById("rewardIcon").textContent=tasks[taskIndex].gear;
+ document.getElementById("unlockText").textContent=tasks[taskIndex].reward.replace(/^.\s?/u,"")+" UNLOCKED!";
+ show("reward");
+}
+function nextMission(){taskIndex++; if(taskIndex>=tasks.length) showBoss(); else renderMission()}
+function gearHTML(){return tasks.map((t,i)=>`<div class="gear ${i<completed?'':'locked'}">${t.gear}</div>`).join("")}
+function showBoss(){document.getElementById("loadout").innerHTML=gearHTML();show("bossUnlock")}
+function restart(){taskIndex=0;completed=0;renderMission()}
+renderMission();
+
+const canvas=document.getElementById("canvas"),ctx=canvas.getContext("2d");
+let W,H,raf,last,hits,keys={left:false,right:false},bullets=[],enemyBullets=[]; let magAmmo=10,reserveAmmo=30,reloading=false,reloadUntil=0;
+let p={x:100,y:100,vx:0,vy:0,w:34,h:45,on:false,health:3,inv:0,reloadAnim:0};
+let e={x:500,y:180,w:40,h:48,dir:1,shot:0,flash:0,health:3};
+let platforms=[];
+function resize(){let d=devicePixelRatio||1;W=innerWidth;H=innerHeight;canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);
+ platforms=[{x:0,y:H-78,w:W,h:78},{x:W*.08,y:H*.76,w:W*.26,h:18},{x:W*.38,y:H*.60,w:W*.24,h:18},{x:W*.69,y:H*.76,w:W*.25,h:18},{x:W*.71,y:H*.43,w:W*.20,h:18}]}
+addEventListener("resize",resize);resize();
+function startGame(isBoss){
+ bossMode=isBoss;show("game");hits=0;bullets=[];enemyBullets=[];magAmmo=10;reserveAmmo=30;reloading=false;reloadUntil=0;last=performance.now();updateAmmoHUD();
+ p.x=W*.12;p.y=H*.42;p.vx=p.vy=0;p.health=completed>=2?5:3;p.inv=0;p.reloadAnim=0;
+ e.x=W*.78;e.health=isBoss?10:3;e.shot=0;e.w=isBoss?58:40;e.h=isBoss?64:48;e.y=(H*.60)-e.h;
+ cancelAnimationFrame(raf);raf=requestAnimationFrame(loop)
+}
+function rectHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function jump(){if(p.on){p.vy=completed>=6?-15:-12.5;p.on=false}}
+let lastShot=0;
+function updateAmmoHUD(){
+ const a=document.getElementById("ammo"), rb=document.getElementById("reload");
+ if(reloading){a.textContent="RELOADING…";}else{a.textContent=`MAG ${magAmmo}/10 · ${reserveAmmo} LEFT`;}
+ rb.disabled=reloading || reserveAmmo<=0 || magAmmo>=10;
+ document.getElementById("shoot").disabled=reloading || magAmmo<=0;
+}
+function shoot(){
+ let now=performance.now(),gap=completed>=4?180:330;
+ if(reloading||magAmmo<=0||now-lastShot<gap)return;
+ lastShot=now;magAmmo--;bullets.push({x:p.x+p.w/2,y:p.y+p.h*.45,vx:completed>=3?13:10,w:14,h:5});updateAmmoHUD();
+}
+function reload(){
+ if(reloading||magAmmo>=10||reserveAmmo<=0)return;
+ reloading=true;p.reloadAnim=1;reloadUntil=performance.now()+1500;
+ const rb=document.getElementById("reload");rb.classList.add("reloadSpin");updateAmmoHUD();
+ setTimeout(()=>{
+   if(!reloading)return;
+   const need=10-magAmmo,take=Math.min(need,reserveAmmo);magAmmo+=take;reserveAmmo-=take;reloading=false;p.reloadAnim=0;
+   rb.classList.remove("reloadSpin");updateAmmoHUD();
+ },1500);
+}
+function bind(id,down,up){let el=document.getElementById(id);el.addEventListener("pointerdown",ev=>{ev.preventDefault();el.setPointerCapture(ev.pointerId);down();el.classList.add("pressed")});["pointerup","pointercancel"].forEach(v=>el.addEventListener(v,ev=>{ev.preventDefault();if(up)up();el.classList.remove("pressed")}))}
+bind("left",()=>keys.left=true,()=>keys.left=false);bind("right",()=>keys.right=true,()=>keys.right=false);bind("jump",jump);bind("reload",reload);bind("shoot",shoot);
+addEventListener("keydown",ev=>{if(ev.key==="ArrowLeft")keys.left=true;if(ev.key==="ArrowRight")keys.right=true;if(ev.key==="ArrowUp"||ev.key===" ")jump();if(ev.key.toLowerCase()==="x")shoot();if(ev.key.toLowerCase()==="c")reload()});
+addEventListener("keyup",ev=>{if(ev.key==="ArrowLeft")keys.left=false;if(ev.key==="ArrowRight")keys.right=false});
+function hearts(n){return "❤️".repeat(Math.max(0,n))}
+function endRound(){
+ cancelAnimationFrame(raf);
+ if(bossMode){document.getElementById("finishLoadout").innerHTML=gearHTML();show("finish")}
+ else {document.getElementById("hits").textContent="🎯 Hits: "+hits;show("round")}
+}
+function loop(t){
+ let dt=Math.min((t-last)/16.67,2);last=t;
+ document.getElementById("playerHearts").textContent=hearts(p.health);
+ document.getElementById("enemyHearts").textContent=hearts(Math.min(e.health,5));
+ if(e.health<=0||p.health<=0||(!reloading&&magAmmo===0&&reserveAmmo===0&&bullets.length===0)){endRound();return}
+ update(dt);draw();raf=requestAnimationFrame(loop)
+}
+function update(dt){
+ p.vx=(keys.right?5.5:0)-(keys.left?5.5:0);p.x+=p.vx*dt;p.vy+=.62*dt;p.y+=p.vy*dt;p.on=false;p.inv=Math.max(0,p.inv-dt);
+ p.x=Math.max(0,Math.min(W-p.w,p.x));
+ for(const q of platforms){if(p.vy>=0&&p.x+p.w>q.x&&p.x<q.x+q.w&&p.y+p.h>=q.y&&p.y+p.h<=q.y+20+p.vy*dt){p.y=q.y-p.h;p.vy=0;p.on=true}}
+ if(p.y>H){p.x=70;p.y=H*.68;p.vy=0}
+ e.x+=e.dir*(bossMode?1.7:1.2)*dt;if(e.x<W*.60||e.x>W-e.w-25)e.dir*=-1;
+ e.shot-=dt;if(e.shot<=0){enemyBullets.push({x:e.x,y:e.y+20,vx:bossMode?-7:-5.5,w:12,h:5});e.shot=(bossMode?35:60)+Math.random()*45}
+ bullets.forEach(b=>b.x+=b.vx*dt);enemyBullets.forEach(b=>b.x+=b.vx*dt);
+ for(const b of bullets)if(!b.dead&&rectHit(b,e)){b.dead=true;hits++;e.health--;e.flash=8}
+ for(const b of enemyBullets)if(!b.dead&&rectHit(b,p)&&p.inv<=0){b.dead=true;if(completed>=5&&Math.random()<.45){}else p.health--;p.inv=45}
+ bullets=bullets.filter(b=>!b.dead&&b.x<W+20);enemyBullets=enemyBullets.filter(b=>!b.dead&&b.x>-20);e.flash=Math.max(0,e.flash-dt)
+}
+function rr(x,y,w,h,r,c){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=c;ctx.fill()}
+function draw(){
+ ctx.clearRect(0,0,W,H);let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,bossMode?"#59497f":"#7f8fd0");g.addColorStop(1,bossMode?"#262244":"#344574");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.globalAlpha=.15;ctx.fillStyle="#fff";for(let i=0;i<6;i++){ctx.beginPath();ctx.arc((i*.23+.05)*W,H*.24+(i%2)*55,40+i*5,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+ platforms.forEach(q=>{rr(q.x,q.y,q.w,q.h,9,"#28385d");ctx.fillStyle="#76a64b";ctx.fillRect(q.x,q.y,q.w,6)});
+ ctx.save();
+ let reloadPhase=reloading?((performance.now()%(1500))/1500):0;
+ let bob=reloading?Math.sin(reloadPhase*Math.PI*2)*2:0;
+ let gunAngle=reloading?(-0.95+Math.sin(reloadPhase*Math.PI*2)*0.28):0;
+ ctx.translate(p.x+18,p.y+24+bob);
+ ctx.fillStyle=p.inv>0&&Math.floor(p.inv/4)%2?"#fff":"#18345f";
+ ctx.fillRect(-10,-11,20,29);
+ ctx.fillStyle="#f3c19d";ctx.beginPath();ctx.arc(0,-14,11,0,Math.PI*2);ctx.fill();
+ // front arm
+ ctx.strokeStyle="#f3c19d";ctx.lineWidth=6;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(6,-2);ctx.lineTo(15,7);ctx.stroke();
+ // gun pivots down/in during reload
+ ctx.save();ctx.translate(8,-4);ctx.rotate(gunAngle);
+ ctx.fillStyle="#246dc2";ctx.fillRect(0,0,24,8);
+ ctx.fillStyle="#ffe05b";ctx.fillRect(22,2,7,3);
+ // magazine visibly drops and returns
+ if(reloading){
+   let magDrop=Math.sin(reloadPhase*Math.PI)*13;
+   ctx.fillStyle="#26364e";ctx.fillRect(7,7+magDrop,7,11);
+ }else{
+   ctx.fillStyle="#26364e";ctx.fillRect(7,7,7,11);
+ }
+ ctx.restore();
+ // second hand reaches toward magazine during reload
+ if(reloading){
+   let handY=8+Math.sin(reloadPhase*Math.PI)*9;
+   ctx.strokeStyle="#f3c19d";ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(8,handY);ctx.stroke();
+ }
+ ctx.restore();
+ ctx.fillStyle=e.flash?"#fff":bossMode?"#392a4e":"#9e2935";ctx.fillRect(e.x+5,e.y+12,e.w-10,e.h-12);ctx.fillStyle=bossMode?"#d63b4b":"#222";ctx.beginPath();ctx.arc(e.x+e.w/2,e.y+10,bossMode?15:11,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e87032";ctx.fillRect(e.x-12,e.y+20,24,8);
+ ctx.fillStyle="#71e7ff";bullets.forEach(b=>ctx.fillRect(b.x,b.y,b.w,b.h));ctx.fillStyle="#ffb04c";enemyBullets.forEach(b=>ctx.fillRect(b.x,b.y,b.w,b.h))
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body></html>
